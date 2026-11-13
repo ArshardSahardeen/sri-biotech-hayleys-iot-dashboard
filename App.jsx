@@ -23,7 +23,7 @@ import {
   ResponsiveContainer 
 } from 'recharts';
 
-// Initial simulated historical data for the chart
+// Seed historical telemetry for the 15-point rolling chart window
 const initialChartData = Array.from({ length: 15 }, (_, i) => ({
   time: `10:${i.toString().padStart(2, '0')}`,
   moisture: 40 + Math.random() * 5,
@@ -31,35 +31,29 @@ const initialChartData = Array.from({ length: 15 }, (_, i) => ({
 }));
 
 export default function App() {
-  // --- STATE MANAGEMENT ---
-  // Real-time metrics
   const [metrics, setMetrics] = useState({
     moisture: 42.5,
-    ph: 6.1, // Paddy prefers slightly acidic (5.5 - 6.5)
-    salinity: 1.2, // Low salinity for Paddy (< 2.0 dS/m)
+    ph: 6.1,        // Optimal Paddy soil pH: 5.5 - 6.5
+    salinity: 1.2,  // Paddy EC threshold: < 2.0 dS/m
     temp: 29.5
   });
 
-  // Irrigation Control State
   const [irrigation, setIrrigation] = useState({
     isAuto: true,
     isPumpOn: false
   });
 
-  // Chart Data
   const [chartData, setChartData] = useState(initialChartData);
 
-  // Alerts
   const [alerts, setAlerts] = useState([
     { id: 1, time: '10:12 AM', msg: 'System online. Edge gateway connected via NB-IoT.', type: 'info' },
     { id: 2, time: '10:05 AM', msg: 'Monsoon rain predicted in Kurunegala. Automated irrigation paused to prevent lodging.', type: 'warning' },
     { id: 3, time: '09:30 AM', msg: 'Soil pH optimal for Paddy crop (6.1).', type: 'success' },
   ]);
 
-  // --- SIMULATION EFFECTS ---
+  // Poll simulated MQTT telemetry stream every 3 seconds
   useEffect(() => {
     const interval = setInterval(() => {
-      // Simulate fluctuating sensor readings
       setMetrics(prev => {
         const fluctuate = (val, min, max) => {
           let newVal = val + (Math.random() - 0.5) * 0.8;
@@ -78,7 +72,6 @@ export default function App() {
         };
       });
 
-      // Update Chart Data
       setChartData(prev => {
         const newData = [...prev.slice(1)];
         const now = new Date();
@@ -89,13 +82,11 @@ export default function App() {
         });
         return newData;
       });
-
-    }, 3000); // Update every 3 seconds
+    }, 3000);
 
     return () => clearInterval(interval);
   }, [irrigation.isPumpOn, metrics]);
 
-  // --- HANDLERS ---
   const handleToggleAuto = () => {
     setIrrigation(prev => {
       const newAuto = !prev.isAuto;
@@ -111,6 +102,7 @@ export default function App() {
   const handleTogglePump = () => {
     setIrrigation(prev => {
       const newPumpState = !prev.isPumpOn;
+      // Disengage automated rules whenever manual pump control is triggered
       const newAutoState = false; 
       
       addAlert(`Irrigation Pump manually turned ${newPumpState ? 'ON' : 'OFF'}.`, newPumpState ? 'success' : 'warning');
@@ -125,7 +117,6 @@ export default function App() {
     setAlerts(prev => [{ id: Date.now(), time: timeStr, msg, type }, ...prev].slice(0, 5));
   };
 
-  // --- UI COMPONENTS ---
   const MetricCard = ({ title, value, unit, icon: Icon, colorClass, status }) => (
     <div className="bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-lg flex flex-col justify-between">
       <div className="flex justify-between items-start mb-4">
@@ -150,7 +141,6 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-900 text-slate-200 font-sans p-4 md:p-8">
-      {/* HEADER */}
       <header className="flex flex-col md:flex-row justify-between items-center mb-8 bg-slate-800/50 p-4 rounded-xl border border-slate-700">
         <div className="flex items-center space-x-4 mb-4 md:mb-0">
           <div className="w-12 h-12 bg-emerald-600 rounded-lg flex items-center justify-center shadow-lg shadow-emerald-900/50">
@@ -175,7 +165,6 @@ export default function App() {
         </div>
       </header>
 
-      {/* METRICS GRID */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <MetricCard 
           title="Soil Moisture" 
@@ -211,9 +200,7 @@ export default function App() {
         />
       </div>
 
-      {/* MIDDLE ROW: CHARTS & WEATHER */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-        {/* CHART */}
         <div className="lg:col-span-2 bg-slate-800 border border-slate-700 rounded-xl p-6 shadow-lg">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-lg font-bold text-white">Live Edge Analytics</h2>
@@ -246,7 +233,6 @@ export default function App() {
           </div>
         </div>
 
-        {/* WEATHER WIDGET */}
         <div className="bg-slate-800 border border-slate-700 rounded-xl p-6 shadow-lg flex flex-col">
           <h2 className="text-lg font-bold text-white mb-6 flex items-center">
             <CloudRain className="mr-2 text-blue-400" size={20} />
@@ -279,9 +265,7 @@ export default function App() {
         </div>
       </div>
 
-      {/* BOTTOM ROW: CONTROLS & ALERTS */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* IRRIGATION CONTROL */}
         <div className="bg-slate-800 border border-slate-700 rounded-xl p-6 shadow-lg">
           <h2 className="text-lg font-bold text-white mb-6 flex items-center">
             <Settings className="mr-2 text-emerald-400" size={20} />
@@ -289,7 +273,6 @@ export default function App() {
           </h2>
 
           <div className="space-y-6">
-            {/* Automation Toggle */}
             <div className="flex items-center justify-between p-4 bg-slate-900/50 rounded-lg border border-slate-700/50">
               <div>
                 <p className="font-semibold text-white">Automated Logic (AI)</p>
@@ -303,7 +286,6 @@ export default function App() {
               </button>
             </div>
 
-            {/* Manual Pump Toggle */}
             <div className={`flex items-center justify-between p-4 rounded-lg border transition-all ${irrigation.isPumpOn ? 'bg-blue-900/30 border-blue-500/50' : 'bg-slate-900/50 border-slate-700/50'}`}>
               <div className="flex items-center space-x-4">
                 <div className={`p-3 rounded-full ${irrigation.isPumpOn ? 'bg-blue-500 text-white' : 'bg-slate-700 text-slate-400'}`}>
@@ -338,7 +320,6 @@ export default function App() {
           </div>
         </div>
 
-        {/* ALERTS FEED */}
         <div className="bg-slate-800 border border-slate-700 rounded-xl p-6 shadow-lg flex flex-col h-full">
           <h2 className="text-lg font-bold text-white mb-6 flex items-center">
             <Bell className="mr-2 text-amber-400" size={20} />
